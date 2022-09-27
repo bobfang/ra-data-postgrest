@@ -1,6 +1,6 @@
 {
-    "name": "@raphiniert/ra-data-postgrest",
-    "version": "1.2.0",
+    "name": "@bobfang/ra-data-postgrest",
+    "version": "1.2.1",
     "description": "postgREST data provider for react-admin",
     "main": "lib/index.js",
     "module": "esm/index.js",
@@ -15,9 +15,9 @@
         "François Zaninotto",
         "Raphael Scheible"
     ],
-    "repository": "raphiniert-com/ra-data-postgrest",
-    "homepage": "https://github.com/raphiniert-com/ra-data-postgrest",
-    "bugs": "https://github.com/raphiniert-com/ra-data-postgrest/issues",
+    "repository": "bobfang-com/ra-data-postgrest",
+    "homepage": "https://github.com/bobfang/ra-data-postgrest",
+    "bugs": "https://github.com/bobfang/ra-data-postgrest/issues",
     "license": "MIT",
     "scripts": {
         "build": "yarn run build-cjs && yarn run build-esm",

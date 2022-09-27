@@ -35,42 +35,86 @@ import { fetchUtils, DataProvider, Identifier } from 'ra-core';
  *
  * export default App;
  */
+
+/*
+  Attempting to combine logic from https://github.com/tomberek/aor-postgrest-client/blob/master/src/index.js#L29-L66
+  The old postgrest data connector worked quite well, but wasn't keeping up with react-admin v4 changes
+  Maybe in the future, defaultListOp should be an object that chooses a default op based on the datatype.
+  That way, we can get some sensible defaults that users can extend without having to require using the @ splitter in all the columns
+  A side effect of using the @ is that the i18nprovider/translate function will try to read a translation string that doesn't exist
+*/
 function parseFilters(filter, defaultListOp) {
   let result = {};
   Object.keys(filter).forEach(function (key) {
     // key: the name of the object key
 
     const splitKey = key.split('@');
+    const hasSplitter = key.includes("@"); // used to check if rpc (split using @  but len < 2)
     const operation = splitKey.length == 2 ? splitKey[1] : defaultListOp;
 
-    let values;
-    if (operation.includes('like')) {
-      // we split the search term in words
-      values = filter[key].trim().split(' ');
-    } else {
-      values = [filter[key]];
-    }
-
-    values.forEach(value => {
-      // if operator is intentionally blank, rpc syntax 
-      let op = operation.includes('like') ? `${operation}.*${value}*` : operation.length == 0 ? `${value}` : `${operation}.${value}`;
-
-      if (result[splitKey[0]] === undefined) {
-        // first operator for the key, we add it to the dict
-        result[splitKey[0]] = op;
-      }
-      else
-      {
-        if (!Array.isArray(result[splitKey[0]])) {
-          // second operator, we transform to an array
-          result[splitKey[0]] = [result[splitKey[0]], op]
+    switch (typeof filter[key]) {
+      case 'string':
+        if (splitKey.length == 2) {
+          // a string with non-default op
+          result[key] = `${operation}.*` + filter[key].replace(/:/, '') + '*'
         } else {
-          // third and subsequent, we add to array
-          result[splitKey[0]].push(op);
+          // rpc or default op
+          result[key] = hasSplitter ? filter[key] : 'ilike.*' + filter[key].replace(/:/, '') + '*'
         }
-      }
-    });
+        break
 
+      case 'boolean':
+        if (splitKey.length == 2) {
+          // a boolean with non-default op
+          result[key] = `${operation}.` + filter[key]
+        } else {
+          // rpc or default op
+          result[key] = hasSplitter ? filter[key] : 'is.' + filter[key]
+        }
+        break
+
+      case 'undefined':
+        // probably don't need to use ${operation} to change this behavior
+        result[key] = 'is.null'
+        break
+
+      case 'number':
+        if (splitKey.length == 2) {
+          // a number with non-default op
+          result[key] = `${operation}.` + filter[key]
+        } else {
+          // rpc or default op
+          result[key] = hasSplitter ? filter[key] : 'eq.' + filter[key]
+        }
+        break
+
+      case 'object':
+        // handle filter = {"numbers":[1,2,3]} the result should be either cs.{1,2,3} or in.{1,2,3}
+        // the previous code returns eq.1,2,3 which won't result in any matches
+
+        if (filter[key].constructor === Array) {
+          if (splitKey.length == 2) {
+            // an object with non-default op
+            result[key] = `${operation}.{` + filter[key].toString().replace(/:/, '') + '}'
+          } else {
+            // rpc or default op
+            result[key] = hasSplitter ? filter[key] :'cs.{' + filter[key].toString().replace(/:/, '') + '}'
+          }
+        } else {
+          if (hasSplitter) {
+            // TODO: what should the RPC syntax be? I'm assuming the spirit of the requirement is to just send them without filters
+            result[key] = filter[key]
+          } else {
+            // inherited this logic from prior code from https://github.com/tomberek/aor-postgrest-client/blob/master/src/index.js#L54-L55
+            Object.keys(filter[key]).map(val => (result[`${key}->>${val}`] = `ilike.*${filter[key][val]}*`))
+          }
+        }
+        break
+
+      default:
+        result[key] = 'ilike.*' + filter[key].toString().replace(/:/, '') + '*'
+        break
+    }
   });
 
   return result;
@@ -100,8 +144,11 @@ const encodeId = (data: any, primaryKey: PrimaryKey): Identifier => {
 }
 
 const dataWithId = (data: any, primaryKey: PrimaryKey) => {
-  if (primaryKey === ['id']) {
-    return data;
+  // fix error TS2839: This condition will always return 'false' since JavaScript compares objects by reference, not value. if (primaryKey === ['id'])
+  if (primaryKey ? primaryKey.length > 0 : false) {
+    if (primaryKey[0] === 'id') {
+      return data;
+    }
   }
 
   return Object.assign(data, {
