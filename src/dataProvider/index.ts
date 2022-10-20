@@ -363,7 +363,8 @@ export default (apiUrl, httpClient = fetchUtils.fetchJson, defaultListOp = 'eq',
       headers: new Headers({
         'Accept': 'application/vnd.pgrst.object+json',
         'Prefer': 'return=representation',
-        'Content-Type': 'application/json'
+        // remove content-type because we might be sending FormData or json, the client will resolve correctly
+        //'Content-Type': 'application/json'
       }),
       body,
     }).then(({ json }) => ({ data: dataWithId(json, primaryKey) }));
@@ -411,7 +412,8 @@ export default (apiUrl, httpClient = fetchUtils.fetchJson, defaultListOp = 'eq',
       headers: new Headers({
         'Accept': 'application/vnd.pgrst.object+json',
         'Prefer': 'return=representation',
-        'Content-Type': 'application/json'
+        // remove content-type because we might be sending FormData or json, the client will resolve correctly
+        //'Content-Type': 'application/json'
       }),
       // check if seralized FormData is being sent - eg. file uploads
       body: params.data instanceof FormData ? params.data : JSON.stringify(params.data),
