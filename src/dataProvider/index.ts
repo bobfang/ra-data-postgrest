@@ -352,8 +352,8 @@ export default (apiUrl, httpClient = fetchUtils.fetchJson, defaultListOp = 'eq',
     const primaryKeyData = getKeyData(primaryKey, data);
 
     const url = `${apiUrl}/${resource}?${query}`;
-
-    const body = JSON.stringify({
+    // check if seralized FormData is being sent - eg. file uploads
+    const body = params.data instanceof FormData ? params.data : JSON.stringify({
       ...data,
       ...primaryKeyData
     });
@@ -413,7 +413,8 @@ export default (apiUrl, httpClient = fetchUtils.fetchJson, defaultListOp = 'eq',
         'Prefer': 'return=representation',
         'Content-Type': 'application/json'
       }),
-      body: JSON.stringify(params.data),
+      // check if seralized FormData is being sent - eg. file uploads
+      body: params.data instanceof FormData ? params.data : JSON.stringify(params.data),
     }).then(({ json }) => ({
       data: {
         ...params.data,
